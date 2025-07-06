@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<body>
+    <script>
+        function calculateProducts() {
+            // Get input values for vector u
+            const u1 = parseFloat(document.getElementById('u1').value);
+            const u2 = parseFloat(document.getElementById('u2').value);
+            const u3 = parseFloat(document.getElementById('u3').value);
+
+            // Get input values for vector v
+            const v1 = parseFloat(document.getElementById('v1').value);
+            const v2 = parseFloat(document.getElementById('v2').value);
+            const v3 = parseFloat(document.getElementById('v3').value);
+
+            // Calculate dot product
+            const dotProduct = u1 * v1 + u2 * v2 + u3 * v3;
+
+            // Calculate cross product
+            const crossProductX = u2 * v3 - u3 * v2;
+            const crossProductY = u3 * v1 - u1 * v3;
+            const crossProductZ = u1 * v2 - u2 * v1;
+
+            // Display results
+            document.getElementById('dotProduct').innerText = `Dot Product: ${dotProduct}`;
+            document.getElementById('crossProduct').innerText = `Cross Product: (${crossProductX}, ${crossProductY}, ${crossProductZ})`;
+        }
+    </script>
+		
+    <h1>3D Vector Operations</h1>
+    <h2>Input Vector u</h2>
+    <label for="u1">u1:</label>
+    <input type="number" id="u1" required>
+    <label for="u2">u2:</label>
+    <input type="number" id="u2" required>
+    <label for="u3">u3:</label>
+    <input type="number" id="u3" required>
+
+    <h2>Input Vector v</h2>
+    <label for="v1">v1:</label>
+    <input type="number" id="v1" required>
+    <label for="v2">v2:</label>
+    <input type="number" id="v2" required>
+    <label for="v3">v3:</label>
+    <input type="number" id="v3" required>
+
+    <button onclick="calculateProducts()">Calculate</button>
+
+    <h2>Results</h2>
+    <label id="dotProduct">Dot Product: </label><br>
+    <label id="crossProduct">Cross Product: </label>
+</body>
+</html>

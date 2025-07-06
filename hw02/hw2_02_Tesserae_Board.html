@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+ <canvas id="tesseraeCanvas" align="center" width="1000" height="750"></canvas>
+
+	<script>
+		const canvas = document.getElementById('tesseraeCanvas');
+		const ctx = canvas.getContext('2d');
+
+		const rows = 6;
+		const cols = 8;
+		const tileSize = 100;
+
+		const primaryColors = ['red', 'yellow', 'blue'];
+		const secondaryColors = ['green', 'orange', 'magenta'];
+
+		// Total tiles 
+		const totalTiles = rows * cols;
+		const secondaryCount = Math.floor(totalTiles / 4); // 1 for every 3 primaries
+		const primaryCount = totalTiles - secondaryCount;
+
+		function generateTiles() {
+			let tiles = [];
+
+			// Add primary tiles
+			for (let i = 0; i < primaryCount; i++) {
+				let color = primaryColors[Math.floor(Math.random() * primaryColors.length)];
+				tiles.push({ type: 'primary', color });
+			}
+
+			// Add secondary tiles
+			for (let i = 0; i < secondaryCount; i++) {
+				let color = secondaryColors[Math.floor(Math.random() * secondaryColors.length)];
+				tiles.push({ type: 'secondary', color });
+			}
+
+			// Shuffle tiles
+			for (let i = tiles.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+			}
+			return tiles;
+		}
+		function drawSymbol(tile, x, y) {
+			const halfTile = tileSize / 2;
+			
+			function drawCircle(scale, color){
+				ctx.strokeStyle = color; 
+				ctx.lineWidth = 5;
+				ctx.beginPath();
+				ctx.arc(x + halfTile, y + halfTile, scale * halfTile, 0, 2 * Math.PI);
+				ctx.stroke();
+			}
+			function drawCross(scale, color) {
+        const halfTile = tileSize / 2;
+        const lineLength = halfTile * scale;
+        const offset = (tileSize - lineLength) / 2;
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 5;
+
+				// Horizontal line
+				ctx.beginPath();
+				ctx.moveTo(x + offset, y + halfTile);
+				ctx.lineTo(x + offset + lineLength, y + halfTile);
+				ctx.stroke();
+
+				// Vertical line
+				ctx.beginPath();
+				ctx.moveTo(x + halfTile, y + offset);
+				ctx.lineTo(x + halfTile, y + offset + lineLength);
+				ctx.stroke();
+			}
+
+			function drawSquare(scale, color){
+				const halfTile = tileSize / 2;
+				const size = halfTile * scale; 
+				const offsetX = (tileSize - size) / 2; 
+				const offsetY = (tileSize - size) / 2;
+
+				ctx.strokeStyle = color;
+				ctx.lineWidth = 5;
+
+				ctx.strokeRect(x + offsetX, y + offsetY, size, size);
+			}
+			
+			// Draw the symbol based on the tile's color
+			if (tile.type === 'primary') {
+				switch (tile.color) {
+					case 'red':
+						drawCircle(0.75, 'darkred');
+						break;
+					case 'yellow':
+						drawCross(1.75, 'gold');
+						break;
+					case 'blue':
+						drawSquare(1.25, 'navy');
+						break;
+				}
+			} 
+			else if (tile.type === 'secondary') {
+				switch (tile.color) {
+					case 'orange':
+						drawCircle(0.75, 'chocolate');
+						drawCross(1.5,'chocolate');
+						break;
+					case 'green':
+						drawSquare(0.75, 'darkgreen');
+						drawCross(1.75, 'darkgreen');
+						break;
+					case 'magenta':	
+						// I think it's somewhat irrational that the shape for the pink tile
+						// isn't a circle inside a square. This is way better.
+						drawCircle(0.55, 'purple');
+						drawSquare(1.25, 'purple');
+						break;
+				}
+			}
+		
+		}
+
+	function drawBoard(tiles) {
+		for (let row = 0; row < rows; row++) {
+			for (let col = 0; col < cols; col++) {
+				const index = row * cols + col;
+				const tile = tiles[index];
+				const x = col * tileSize;
+				const y = row * tileSize;
+
+
+				ctx.fillStyle = tile.color;
+				ctx.fillRect(x, y, tileSize, tileSize);
+
+				// Draw the symbol on top of the tile (with no fill, just strokes)
+				drawSymbol(tile, x, y);
+
+				// Add a black outline around the tile
+				ctx.strokeStyle = 'black'; // Constant black outline for the tile
+				ctx.lineWidth = 3;
+				ctx.strokeRect(x, y, tileSize, tileSize); // Draw black outline around the tile
+			}
+		}
+	}
+
+		const tiles = generateTiles();
+		drawBoard(tiles);
+	</script>
+</body>
+
+</html>
+

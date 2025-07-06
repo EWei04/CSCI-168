@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html>
+<body>
+ <canvas id="tesseraeCanvas" align="center" width="1000" height="800"style="background-color:goldenrod;"></canvas>
+
+ <script>
+	const canvas = document.getElementById('tesseraeCanvas');
+	const ctx = canvas.getContext('2d');
+
+	const rows = 6;
+	const cols = 8;
+	const tileSize = 100;
+
+	// Define colors and types
+	const primaryColors = ['red', 'yellow', 'blue'];
+	const secondaryColors = ['orange', 'green', 'magenta'];
+	const tertiaryColor = 'gray';
+
+	// Total tiles 
+	const totalTiles = rows * cols;
+	const secondaryCount = Math.floor(totalTiles / 4); // 1 for every 3 primaries
+	const primaryCount = totalTiles - secondaryCount;
+
+	// Game state
+	let tiles = [];
+	let selectedTile = null;
+	let validMoves = [];
+	let moveCount = 0;
+
+	// Map secondary colors to their component primary colors
+	const colorComponents = {
+		'orange': ['red', 'yellow'],
+		'green': ['yellow', 'blue'],
+		'magenta': ['red', 'blue'],
+		'gray': ['red', 'yellow', 'blue']
+	};
+
+	// Initialize the game
+	function init() {
+		tiles = generateTiles();
+		drawBoard();
+		addEventListeners();
+	}
+
+	function generateTiles() {
+		let generatedTiles = [];
+
+		// Create grid with null entries (for empty spaces)
+		for (let i = 0; i < rows * cols; i++) { generatedTiles.push(null); }
+		const totalTiles = rows * cols;
+		const secondaryCount = Math.floor(totalTiles / 4); // 1 secondary for every 3 primaries
+		const primaryCount = totalTiles - secondaryCount;
+		
+		// Add primary tiles
+		for (let i = 0; i < primaryCount; i++) {
+			let index;
+			do {
+				index = Math.floor(Math.random() * (rows * cols));
+			} while (generatedTiles[index] !== null);
+			
+
+			const color = primaryColors[Math.floor(Math.random() * primaryColors.length)];
+			generatedTiles[index] = { type: 'primary', color };
+		}
+		
+		// Add secondary tiles
+		for (let i = 0; i < secondaryCount; i++) {
+			let index;
+			do {
+				index = Math.floor(Math.random() * (rows * cols));
+			} while (generatedTiles[index] !== null);
+			
+			const color = secondaryColors[Math.floor(Math.random() * secondaryColors.length)];
+			generatedTiles[index] = { type: 'secondary', color };
+		}
+
+		return generatedTiles;
+	}
+	function drawSymbol(tile, x, y) {
+		const halfTile = tileSize / 2;
+		const strokeWidth = tileSize/15;
+		
+		function drawCircle(scale, color) {
+			ctx.strokeStyle = color; 
+			ctx.lineWidth = strokeWidth;
+			ctx.beginPath();
+			ctx.arc(x + halfTile, y + halfTile, scale * halfTile, 0, 2 * Math.PI);
+			ctx.stroke();
+		}
+
+		function drawCross(scale, color) {
+			const lineLength = halfTile * scale;
+			const offset = (tileSize - lineLength) / 2;
+
+			ctx.strokeStyle = color;
+			ctx.lineWidth = strokeWidth;
+
+			// Horizontal line
+			ctx.beginPath();
+			ctx.moveTo(x + offset, y + halfTile);
+			ctx.lineTo(x + offset + lineLength, y + halfTile);
+			ctx.stroke();
+
+			// Vertical line
+			ctx.beginPath();
+			ctx.moveTo(x + halfTile, y + offset);
+			ctx.lineTo(x + halfTile, y + offset + lineLength);
+			ctx.stroke();
+		}
+
+		function drawSquare(scale, color) {
+			const size = halfTile * scale; 
+			const offsetX = (tileSize - size) / 2; 
+			const offsetY = (tileSize - size) / 2;
+
+			ctx.strokeStyle = color;
+			ctx.lineWidth = strokeWidth;
+
+			ctx.strokeRect(x + offsetX, y + offsetY, size, size);
+		}
+		
+		// Draw the symbol based on the tile's color and type
+		if (tile.type === 'primary') {
+			switch (tile.color) {
+				case 'red':
+					drawCircle(tileSize * 0.007, 'darkred');
+					break;
+				case 'yellow':
+					drawCross(tileSize * 0.017, 'gold');
+					break;
+				case 'blue':
+					drawSquare(tileSize * 0.0125, 'navy');
+					break;
+			}
+		} 
+		else if (tile.type === 'secondary') {
+			switch (tile.color) {
+				case 'orange':
+					drawCircle(tileSize * 0.007, 'chocolate');
+					drawCross(tileSize * 0.015, 'chocolate');
+					break;
+				case 'green':
+					drawCross(tileSize * 0.017, 'darkgreen'); 
+					drawSquare(tileSize * 0.0075, 'darkgreen');
+					break;
+				case 'magenta':
+					drawCircle(tileSize * 0.0055, 'purple');
+					drawSquare(tileSize * 0.0125, 'purple');
+					break;
+			}
+		}
+		else if (tile.type === 'tertiary') {
+			// Tertiary contains all three shapes
+			drawCircle(tileSize * 0.007, 'dimgray');
+			drawCross(tileSize * 0.015, 'dimgray');
+			drawSquare(tileSize * 0.009, 'dimgray');		
+		}
+	}
+
+	function drawBoard() {
+		// Clear the canvas
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		
+		// Status
+		ctx.font = '18px Arial';
+		ctx.fillStyle = 'black';
+		let statusText = 'Tesserae: Select a tile and click on a valid destination to move.';
+		if (moveCount > 0) {
+			let tileCount = tiles.filter(tile => tile !== null).length;
+			statusText = `Tiles remaining: ${tileCount} | Moves: ${moveCount}`;
+			
+			// Check for game end conditions
+			if (tileCount === 1) {
+				statusText = `You won in ${moveCount} moves!`;
+			} else {
+				// Check if there are any valid moves left
+				let movesAvailable = false;
+				for (let i = 0; i < tiles.length; i++) {
+					if (tiles[i] && findValidMoves(i).length > 0) {
+						movesAvailable = true;
+						break;
+					}
+				}
+				if (!movesAvailable) {
+					statusText = `Game over! No more valid moves. Tiles remaining: ${tileCount}`;
+				}
+			}
+		}
+		ctx.fillText(statusText, 20, rows * tileSize + 30);
+		
+		// Draw all tiles
+		for (let row = 0; row < rows; row++) {
+			for (let col = 0; col < cols; col++) {
+				const index = row * cols + col;
+				const tile = tiles[index];
+				const x = col * tileSize;
+				const y = row * tileSize;
+
+				// Draw background
+				ctx.fillStyle = 'darkgoldenrod';
+				ctx.fillRect(x, y, tileSize, tileSize);
+				ctx.strokeStyle = 'goldenrod';
+				ctx.strokeWidth = tileSize/8;
+				ctx.strokeRect(x, y, tileSize, tileSize);
+
+				// Draw tile if there is one
+				if (tile) {
+					const offset = tileSize/10;
+					ctx.fillStyle = tile.color;
+					ctx.fillRect(x + offset / 2 , y + offset / 2, tileSize-offset, tileSize-offset);
+					
+					// Draw the symbol
+					drawSymbol(tile, x, y);
+				}
+			}
+		}
+		
+		// Highlight selected tile
+		if (selectedTile !== null) {
+			const row = Math.floor(selectedTile / cols);
+			const col = selectedTile % cols;
+			const x = col * tileSize;
+			const y = row * tileSize;
+ 
+			ctx.beginPath();
+			ctx.arc(x + tileSize/2, y + tileSize/2, tileSize/5, 0, 2 * Math.PI);
+			ctx.fillStyle = "white";
+			ctx.fill();
+		}
+		
+		// Highlight valid moves
+		for (const moveIdx of validMoves) {
+			const row = Math.floor(moveIdx / cols);
+			const col = moveIdx % cols;
+			const x = col * tileSize;
+			const y = row * tileSize;
+			
+			ctx.beginPath();
+			ctx.arc(x + tileSize/2, y + tileSize/2, tileSize/5, 0, 2 * Math.PI);
+			ctx.fillStyle = "lime";
+			ctx.fill();
+		}
+	}
+
+	function addEventListeners() {
+		canvas.addEventListener('click', handleClick);
+	}
+
+	function handleClick(event) {
+		const rect = canvas.getBoundingClientRect();
+		const x = event.clientX - rect.left;
+		const y = event.clientY - rect.top;
+		
+		const col = Math.floor(x / tileSize);
+		const row = Math.floor(y / tileSize);
+		const clickedIndex = row * cols + col;
+		
+		// If no tile is selected yet
+		if (selectedTile === null) {
+			if (tiles[clickedIndex]) {
+				selectedTile = clickedIndex;
+				validMoves = findValidMoves(clickedIndex);
+				drawBoard();
+			}
+		} 
+		// If a tile is already selected
+		else {
+			// If clicked on a valid move
+			if (validMoves.includes(clickedIndex)) {
+				performMove(selectedTile, clickedIndex);
+				moveCount++;
+				selectedTile = null;
+				validMoves = [];
+				drawBoard();
+			} 
+			// If clicked on different tile or same tile, select/deselect it
+			else {
+				if (clickedIndex === selectedTile) {
+					selectedTile = null;
+					validMoves = [];
+				} else if (tiles[clickedIndex]) {
+					selectedTile = clickedIndex;
+					validMoves = findValidMoves(clickedIndex);
+				}
+				drawBoard();
+			}
+		}
+	}
+
+	function findValidMoves(index) {
+		const sourceTile = tiles[index];
+		if (!sourceTile) return [];
+		
+		const sourceRow = Math.floor(index / cols);
+		const sourceCol = index % cols;
+		let moves = [];
+
+		const directions = [
+			[-1, -1], [-1, 0], [-1, 1],	 // Up-left, Up, Up-right
+			[0, -1], [0, 1],	 // Left, Right
+			[1, -1],	[1, 0],	 [1, 1]		 // Down-left, Down, Down-right
+		];
+		
+		for (const [dr, dc] of directions) {
+			// Calculate middle and destination positions
+			const middleRow = sourceRow + dr;
+			const middleCol = sourceCol + dc;
+			const destRow = middleRow + dr;
+			const destCol = middleCol + dc;
+			
+			// Check bounds for both middle and destination
+			if ( middleRow < 0 || middleRow >= rows || middleCol < 0 || middleCol >= cols ||
+			destRow < 0 || destRow >= rows || destCol < 0 || destCol >= cols ) {
+				continue;
+			}
+			
+			const middleIndex = middleRow * cols + middleCol;
+			const destIndex = destRow * cols + destCol;
+			const middleTile = tiles[middleIndex];
+			const destTile = tiles[destIndex];
+			
+			// Check if middle has a tile to jump over
+			if (!middleTile) continue;
+			
+			// Check landing rules
+			if (isValidJump(sourceTile, middleTile) && isValidLanding(sourceTile, destTile)) {
+				moves.push(destIndex);
+			}
+		}
+		return moves;
+	}
+	// Here's where the rules come in
+	function isValidJump(sourceTile, jumpTile) {
+		// A primary tile can jump over a primary of any color
+		if (sourceTile.type === 'primary' && jumpTile.type === 'primary') {
+			return true;
+		}
+		
+		// A primary tile can jump over a secondary iff the primary is 
+		// component of the secondary
+		if (sourceTile.type === 'primary' && jumpTile.type === 'secondary') {
+			return colorComponents[jumpTile.color].includes(sourceTile.color);
+		}
+		
+		// A primary tile can jump over a tertiary tile
+		if (sourceTile.type === 'primary' && jumpTile.type === 'tertiary') {
+			return true;	// Any primary can jump over tertiary
+		}
+		
+		// A secondary tile can jump over an identical secondary
+		if (sourceTile.type === 'secondary' && jumpTile.type === 'secondary') {
+			return sourceTile.color === jumpTile.color;
+		}
+		
+		// A secondary tile can jump over a tertiary tile
+		if (sourceTile.type === 'secondary' && jumpTile.type === 'tertiary') {
+			return true;
+		}
+		
+		// A tertiary tile can only jump over another tertiary tile
+		if (sourceTile.type === 'tertiary' && jumpTile.type === 'tertiary') {
+			return true;
+		}
+		
+		return false;
+	}
+
+	function isValidLanding(sourceTile, destTile) {
+		// Can always land on empty space
+		if (destTile === null) {
+			return true;
+		}
+		
+		// Primary rules
+		if (sourceTile.type === 'primary') {
+			if (destTile.type === 'primary') {
+				return true;	// Will be combined in performMove
+			}
+			
+			// Can land on a secondary that does not contain its color
+			if (destTile.type === 'secondary') {
+				return !colorComponents[destTile.color].includes(sourceTile.color);
+			}
+			
+			return false;	 // Primary can't land on tertiary
+		}
+		
+		// Secondary rules
+		if (sourceTile.type === 'secondary') {
+			// Can land on a primary not contained in the secondary
+			if (destTile.type === 'primary') {
+				return !colorComponents[sourceTile.color].includes(destTile.color);
+			}
+			
+			if (destTile.type === 'secondary') {
+				return sourceTile.color === destTile.color;
+			}
+			
+			return false;	 // Secondary can't land on tertiary
+		}
+		
+		// Tertiary tile landing rules
+		if (sourceTile.type === 'tertiary') {
+			return destTile.type === 'tertiary';
+		}
+		
+		return false;
+	}
+
+	function performMove(sourceIndex, destIndex) {
+		// Get source and middle positions
+		const sourceRow = Math.floor(sourceIndex / cols);
+		const sourceCol = sourceIndex % cols;
+		const destRow = Math.floor(destIndex / cols);
+		const destCol = destIndex % cols;
+		
+		// Calculate middle position (the tile being jumped over)
+		const middleRow = sourceRow + Math.sign(destRow - sourceRow);
+		const middleCol = sourceCol + Math.sign(destCol - sourceCol);
+		const middleIndex = middleRow * cols + middleCol;
+		
+		const sourceTile = tiles[sourceIndex];
+		const middleTile = tiles[middleIndex];
+		const destTile = tiles[destIndex];
+		
+		// Jumping Over Tile
+		if (sourceTile.type === 'primary' && middleTile.type === 'primary') {
+			// Primary jumps over primary - middle tile is removed
+			tiles[middleIndex] = null;
+		} 
+		else if (sourceTile.type === 'primary' && middleTile.type === 'secondary') {
+			// Primary jumps over secondary - subtract primary from secondary
+			const components = colorComponents[middleTile.color].filter(c => c !== sourceTile.color);
+			tiles[middleIndex] = { type: 'primary', color: components[0] };
+		}
+		else if (sourceTile.type === 'primary' && middleTile.type === 'tertiary') {
+			// Primary jumps over tertiary - subtract primary, leaving secondary
+			let remainingComponents = ['red', 'yellow', 'blue'].filter(c => c !== sourceTile.color);
+			// Find the secondary color made by the remaining components
+			let secondaryColor;
+			for (const [color, components] of Object.entries(colorComponents)) {
+				if (components.length === 2 && 
+						components.includes(remainingComponents[0]) && 
+						components.includes(remainingComponents[1])) {
+					secondaryColor = color;
+					break;
+				}
+			}
+			tiles[middleIndex] = { type: 'secondary', color: secondaryColor };
+		}
+		else if (sourceTile.type === 'secondary' && middleTile.type === 'secondary' && 
+						 sourceTile.color === middleTile.color) {
+			// Secondary jumps over identical secondary - middle is removed
+			tiles[middleIndex] = null;
+		}
+		else if (sourceTile.type === 'secondary' && middleTile.type === 'tertiary') {
+			// Secondary jumps over tertiary - subtract secondary, leaving primary
+			// Find the primary not in the secondary
+			let remainingPrimary;
+			for (const color of primaryColors) {
+				if (!colorComponents[sourceTile.color].includes(color)) {
+					remainingPrimary = color;
+					break;
+				}
+			}
+			tiles[middleIndex] = { type: 'primary', color: remainingPrimary };
+		}
+		else if (sourceTile.type === 'tertiary' && middleTile.type === 'tertiary') {
+			// Tertiary jumps over tertiary - middle is removed
+			tiles[middleIndex] = null;
+		}
+		
+		let landingTile;
+		
+		if (destTile === null) {
+			// Landing on empty space - just move the source tile
+			landingTile = { ...sourceTile };
+		} 
+		else {
+			// Landing on another tile - combine according to rules
+			if (sourceTile.type === 'primary' && destTile.type === 'primary') {
+				if (sourceTile.color === destTile.color) {
+					// Same color - remains primary of same color
+					landingTile = { type: 'primary', color: sourceTile.color };
+				} 
+				else {
+					// Different colors - combine to secondary
+					let secondaryColor;
+					const combined = [sourceTile.color, destTile.color].sort();
+					
+					for (const [color, components] of Object.entries(colorComponents)) {
+						if (components.length === 2 && 
+								components.includes(combined[0]) && 
+								components.includes(combined[1])) {
+							secondaryColor = color;
+							break;
+						}
+					}
+					landingTile = { type: 'secondary', color: secondaryColor };
+				}
+			} 
+			// Primary landing on secondary
+			else if (sourceTile.type === 'primary' && destTile.type === 'secondary') {
+				// Landing on secondary (that doesn't contain the primary color)
+				// This creates a tertiary tile since all three primary colors represented
+				landingTile = { type: 'tertiary', color: tertiaryColor };
+			}
+			
+			// Secondary landing on primary
+			else if (sourceTile.type === 'secondary' && destTile.type === 'primary') {
+				// Landing on primary (not contained in the secondary)
+				// This creates a tertiary tile
+				landingTile = { type: 'tertiary', color: tertiaryColor };
+			}
+			
+			// Secondary landing on secondary
+			else if (sourceTile.type === 'secondary' && destTile.type === 'secondary' && 
+							 sourceTile.color === destTile.color) {
+				// Landing on identical secondary - remains same secondary
+				landingTile = { type: 'secondary', color: sourceTile.color };
+			}
+			
+			// Tertiary landing on tertiary
+			else if (sourceTile.type === 'tertiary' && destTile.type === 'tertiary') {
+				// Tertiary remains tertiary
+				landingTile = { type: 'tertiary', color: tertiaryColor };
+			}
+		}
+		
+		// Update the board
+		tiles[destIndex] = landingTile;
+		tiles[sourceIndex] = null;
+ 
+		checkGameState();
+	}
+	function checkGameState() {
+		drawBoard();
+	}
+
+	init();
+ </script>
+</body>
+</html>
