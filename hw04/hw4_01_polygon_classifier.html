@@ -1,87 +1,84 @@
 <!DOCTYPE html>
 <html>
-<body>
-    <h1>Polygon Convex Checker</h1>
-    <canvas id="canvas" width="600" height="400" style = "border: 1px solid black"></canvas>
+	<body>
+		<h1>Polygon Convex Checker</h1>
+		<canvas id="canvas" width="600" height="400" style = "border: 1px solid black"></canvas>
 		<button id="clearBtn">Clear Canvas</button>
-    <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const clearBtn = document.getElementById('clearBtn');
-        let vertices = [];
+		<script>
+			const canvas = document.getElementById('canvas');
+			const ctx = canvas.getContext('2d');
+			const clearBtn = document.getElementById('clearBtn');
+			let vertices = [];
 
-        canvas.addEventListener('click', (event) => {
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            vertices.push({ x, y });
+			canvas.addEventListener('click', (event) => {
+				const rect = canvas.getBoundingClientRect();
+				const x = event.clientX - rect.left;
+				const y = event.clientY - rect.top;
+				vertices.push({ x, y });
 
-            drawPolygon();
-        });
+				drawPolygon();
+			});
 
-        clearBtn.addEventListener('click', () => {
-            vertices = [];
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        });
+			clearBtn.addEventListener('click', () => {
+				vertices = [];
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+			});
 
-        function drawPolygon() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+			function drawPolygon() {
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw vertex markers
-            vertices.forEach(vertex => {
-                drawVertexMarker(vertex.x, vertex.y);
-            });
+				// Draw vertex markers
+				vertices.forEach(vertex => { drawVertexMarker(vertex.x, vertex.y); });
 
-            // Draw polygon if at least 3 vertices
-            if (vertices.length >= 3) {
-                ctx.beginPath();
-                ctx.moveTo(vertices[0].x, vertices[0].y);
-                for (let i = 1; i < vertices.length; i++) {
-                    ctx.lineTo(vertices[i].x, vertices[i].y);
-                }
-                ctx.closePath();
+				// Draw polygon if at least 3 vertices
+				if (vertices.length >= 3) {
+					ctx.beginPath();
+					ctx.moveTo(vertices[0].x, vertices[0].y);
+					for (let i = 1; i < vertices.length; i++) {
+						ctx.lineTo(vertices[i].x, vertices[i].y);
+					}
+					ctx.closePath();
 
-                const isConvexPolygon = isConvex(vertices);
-                ctx.fillStyle = isConvexPolygon ? 'blue' : 'red';
-                ctx.fill();
-                ctx.stroke();
-            }
-        }
+					const isConvexPolygon = isConvex(vertices);
+					ctx.fillStyle = isConvexPolygon ? 'blue' : 'red';
+					ctx.fill();
+					ctx.stroke();
+				}
+			}
 
-        function drawVertexMarker(x, y) {
-            ctx.beginPath();
-            ctx.arc(x, y, 5, 0, 2 * Math.PI);
-            ctx.fillStyle = 'yellow';
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 1;
-            ctx.fill();
-            ctx.stroke();
-        }
+			function drawVertexMarker(x, y) {
+				ctx.beginPath();
+				ctx.arc(x, y, 5, 0, 2 * Math.PI);
+				ctx.fillStyle = 'yellow';
+				ctx.strokeStyle = 'black';
+				ctx.lineWidth = 1;
+				ctx.fill();
+				ctx.stroke();
+			}
 
-        function isConvex(vertices) {
-            const n = vertices.length;
-            if (n < 4) return true;
+			function isConvex(vertices) {
+				const n = vertices.length;
+				if (n < 4) return true;
 
-            let sign = 0;
+				let sign = 0;
+				for (let i = 0; i < n; i++) {
+					const dx1 = vertices[(i + 2) % n].x - vertices[(i + 1) % n].x;
+					const dy1 = vertices[(i + 2) % n].y - vertices[(i + 1) % n].y;
+					const dx2 = vertices[i].x - vertices[(i + 1) % n].x;
+					const dy2 = vertices[i].y - vertices[(i + 1) % n].y;
+					const zcrossproduct = dx1 * dy2 - dy1 * dx2;
 
-            for (let i = 0; i < n; i++) {
-                const dx1 = vertices[(i + 2) % n].x - vertices[(i + 1) % n].x;
-                const dy1 = vertices[(i + 2) % n].y - vertices[(i + 1) % n].y;
-                const dx2 = vertices[i].x - vertices[(i + 1) % n].x;
-                const dy2 = vertices[i].y - vertices[(i + 1) % n].y;
-                const zcrossproduct = dx1 * dy2 - dy1 * dx2;
-
-                if (i === 0) {
-                    sign = zcrossproduct > 0 ? 1 : -1;
-                } else if (zcrossproduct !== 0) {
-                    if ((zcrossproduct > 0 && sign < 0) || (zcrossproduct < 0 && sign > 0)) {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
-    </script>
-		
-</body>
+					if (i === 0) {
+						sign = zcrossproduct > 0 ? 1 : -1;
+					} 
+					else if (zcrossproduct !== 0) {
+					if ((zcrossproduct > 0 && sign < 0) || (zcrossproduct < 0 && sign > 0)) {
+						return false;
+						}
+					}
+				}
+				return true;
+			}
+		</script>
+	</body>
 </html>

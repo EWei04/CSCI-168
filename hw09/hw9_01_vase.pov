@@ -9,8 +9,6 @@ camera {
   angle 30
 }
 
-
-
 light_source {
   <-275, 150, -90>
   color rgb <1, 1, 1>

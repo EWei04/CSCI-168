@@ -1,220 +1,215 @@
 <!DOCTYPE html>
 <html>
-<body>
-    <audio id="bounceSound" src="https://sfxcontent.s3.amazonaws.com/soundfx/Basketball-BallBounce.mp3" preload="auto"></audio>
-    <button id="startBtn" style="position:absolute; top:20px; left:20px; z-index:1;">Start Animation</button>
-	<button id="resetBtn" style="position:absolute; top:60px; left:20px; z-index:1;">Reset</button>
+	<body>
+		<audio id="bounceSound" src="https://sfxcontent.s3.amazonaws.com/soundfx/Basketball-BallBounce.mp3" preload="auto"></audio>
+		<button id="startBtn" style="position:absolute; top:20px; left:20px; z-index:1;">Start Animation</button>
+		<button id="resetBtn" style="position:absolute; top:60px; left:20px; z-index:1;">Reset</button>
 
-    <script src="https://cdn.jsdelivr.net/npm/three/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three/examples/js/controls/OrbitControls.js"></script>
-    
-    <script>
-        // Set up
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(60, 1600 / 900, 0.1, 1000);
-		camera.position.set(0, 3.5, 6);
-        
-        const renderer = new THREE.WebGLRenderer();
-        renderer.setSize(1600, 900);
-        renderer.setClearColor(0xffffff);
-        document.body.appendChild(renderer.domElement);
-        
-        // Set up OrbitControls
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;     
-
-        
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff);
-        scene.add(ambientLight);
-        
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(1, 1, 1);
-        scene.add(directionalLight);
-        
-        // Floor
-        const floorGeometry = new THREE.PlaneGeometry(30, 15);
-		const floorTexture = new THREE.TextureLoader().load( 'https://media.istockphoto.com/id/1215073203/vector/watercolor-seamless-background-with-green-square-tile.jpg?s=612x612&w=0&k=20&c=b9OaODKEURg2t9hh7CAY9AkKqeDRg3gakCAG6ozBCI4='
-		);
-		floorTexture.wrapS = THREE.RepeatWrapping;
-		floorTexture.wrapT = THREE.RepeatWrapping;
-		floorTexture.repeat.set(3, 3);
-        const floorMaterial = new THREE.MeshStandardMaterial({ 
-            map: floorTexture,
-			color: 0xf4a460,
-            roughness: 0.8,
-            metalness: 0.2,
-        });
-        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-        floor.rotation.x = -Math.PI / 2; // Rotate to be horizontal
-        scene.add(floor);
+		<script src="https://cdn.jsdelivr.net/npm/three/build/three.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/three/examples/js/controls/OrbitControls.js"></script>
 		
-		const wallGeometry = new THREE.PlaneGeometry(30, 10);
-		const wallTexture = new THREE.TextureLoader().load('https://media.istockphoto.com/id/173585101/photo/faux-stone-warm-leather-001-xxl.jpg?s=612x612&w=0&k=20&c=5TPbXOoIJ84sBQ-k-SM0tFYEQkLMs1ULJC1MD23VSdU=');
-        const wallMaterial = new THREE.MeshStandardMaterial({ 
-			map: wallTexture,
-            color: 0xf5deb3,
-            roughness: 0.8,
-            metalness: 0.2,
-            side: THREE.DoubleSide
-        });
-        const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-		wall.position.y += 5;
-		wall.position.z -= 2;
-        scene.add(wall);
-        
-        // Create the basketball
-        const ballRadius = 0.8;
-        const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
-		const basketballTexture = new THREE.TextureLoader().load(							'https://static.turbosquid.com/Preview/Content_2010_02_27__23_25_12/Basketball+texture.jpg449ad06d-12b1-4d99-b7d8-e11229001e82Zoom.jpg'
-        );
-		basketballTexture.wrapS = THREE.RepeatWrapping;
-		basketballTexture.wrapT = THREE.RepeatWrapping;
-        const ballMaterial = new THREE.MeshStandardMaterial({ 
-            map: basketballTexture,
-            roughness: 0.7,
-            metalness: 0.1
-        });
-        const sphere = new THREE.Mesh(ballGeometry, ballMaterial);
-        scene.add(sphere);
-       
-        // Physics
-        let time = 0;
-        let now = 0;
-        let by = 5; // Initial height
-        let bx = -5; // Initial x position
-        let dx = 3; // X velocity
-        let dy = 0; // Initial Y velocity
-        let g = -9.8; // Gravity
-        let damp = 0.5; // Damping factor for bounce
-		
-		let animationStarted = false;
-		let animationFrameId = null;
-		
-		let rotationSpeed = 0;
-        const baseRotationSpeed = 5;
-        let lastBounce = false; // Track if the ball bounced in the previous frame
-
-        
-        const bounceSound = document.getElementById('bounceSound');
-          
-        function playBounceSound(intensity) {
-            // Clone the audio element to allow overlapping sounds
-            const sound = bounceSound.cloneNode();
-            // Set volume based on impact intensity
-            sound.volume = Math.min(1.0, Math.max(0.1, intensity));
-            // Play the sound
-            sound.play().catch(e => console.log("Audio play failed:", e));
-        }
-        
-        // Animation loop
-        function animate() {
-            animationFrameId = requestAnimationFrame(animate);
-            
-            // Set deltaTime for consistent animation speed
-            const deltaTime = 1/60;
-            time = now;
-            now += deltaTime;
-            
-            // Update position based on velocity
-            bx += dx * deltaTime;
-            by += dy * deltaTime;
-            
-            // gravity
-            dy += g * deltaTime;          
-            
-            let bounced = false;
-
-            if (by < ballRadius) {
-                by = ballRadius;
-                bounced = true;
-                
-                if (Math.abs(dy) < -g/6) {
-                    // Very small bounce - stop the ball
-                    dy = 0;
-                    g = 0;
-                    rotationSpeed = 1.4;
-                } else {
-                    // Bounce with damping
-                    const impactForce = Math.abs(dy); // Store impact force before damping
-                    dy = -dy * damp;
-                    
-                    // Set rotation speed based on horizontal velocity
-                    rotationSpeed = baseRotationSpeed * Math.sign(dx) * Math.min(1, Math.abs(dy) / 10);
-                    
-                    // Play bounce sound with volume based on impact force
-                    if (impactForce > 1) {
-                        playBounceSound(impactForce / 15); // Normalize volume
-                    }
-                }
-            }
-            
-            // If the ball just bounced (and wasn't bouncing before), adjust rotation
-            if (bounced && !lastBounce && Math.abs(dy) > 0.1) {
-                // Increase rotation on bounce
-                rotationSpeed = baseRotationSpeed * Math.sign(dx) * Math.min(1.5, Math.abs(dy) / 8);
-            }
-            
-            // Update bounce state for next frame
-            lastBounce = bounced;
-            
-            // Update ball position
-            sphere.position.set(bx, by, 0);
-            
-            // Apply rotation around Z-axis (for a ball moving in the XY plane)
-            if (Math.abs(rotationSpeed) > 0.01) {
-                sphere.rotation.z -= rotationSpeed * deltaTime;
-            }
-            
-            // Reset ball if it goes too far
-            if (bx > 10) {
-                bx = -5;
-                by = 5;
-                dy = 0;
-                g = -9.8;
-                rotationSpeed = 0; // Reset rotation speed
-            }
-            
-            // Gradually reduce rotation when in air (air resistance)
-            rotationSpeed *= 0.995;
-            
-            controls.update();
-            renderer.render(scene, camera);
-        }
-		function startAnimation() {
-			if (!animationStarted) {
-				animationStarted = true;
-				animate();
-			}
-		}
-		function stopAnimation() {
-			if (animationFrameId) {
-				cancelAnimationFrame(animationFrameId);
-				animationFrameId = null;
-			}
-			animationStarted = false;
-		}
-		
-		document.getElementById('startBtn').addEventListener('click', () => {
-		startAnimation(); });
-		document.getElementById('resetBtn').addEventListener('click', () => {
-		stopAnimation();
+		<script>
+			// Set up
+			const scene = new THREE.Scene();
+			const camera = new THREE.PerspectiveCamera(60, 1600 / 900, 0.1, 1000);
+			camera.position.set(0, 3.5, 6);
 			
-		// Reset physics and ball state
-		bx = -5;
-		by = 5;
-		dx = 3;
-		dy = 0;
-		g = -9.8;
-		rotationSpeed = 0;
-		lastBounce = false;
+			const renderer = new THREE.WebGLRenderer();
+			renderer.setSize(1600, 900);
+			renderer.setClearColor(0xffffff);
+			document.body.appendChild(renderer.domElement);
 			
-		sphere.position.set(bx, by, 0);
-		sphere.rotation.set(0, 0, 0);
-		
-		renderer.render(scene, camera);
-	});
-	</script>
-</body>
+			// Set up OrbitControls
+			const controls = new THREE.OrbitControls(camera, renderer.domElement);
+			controls.enableDamping = true;
+			controls.dampingFactor = 0.05;	   
+
+			
+			// Lighting
+			const ambientLight = new THREE.AmbientLight(0xffffff);
+			scene.add(ambientLight);
+			
+			const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+			directionalLight.position.set(1, 1, 1);
+			scene.add(directionalLight);
+			
+			// Floor
+			const floorGeometry = new THREE.PlaneGeometry(30, 15);
+			const floorTexture = new THREE.TextureLoader().load( 'floor_texture.jpg'
+			);
+			floorTexture.wrapS = THREE.RepeatWrapping;
+			floorTexture.wrapT = THREE.RepeatWrapping;
+			floorTexture.repeat.set(3, 3);
+			const floorMaterial = new THREE.MeshStandardMaterial({ 
+				map: floorTexture,
+				color: 0xf4a460,
+				roughness: 0.8,
+				metalness: 0.2,
+			});
+			const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+			floor.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+			scene.add(floor);
+			
+			const wallGeometry = new THREE.PlaneGeometry(30, 10);
+			const wallTexture = new THREE.TextureLoader().load('wall_texture.jpg');
+			const wallMaterial = new THREE.MeshStandardMaterial({ 
+				map: wallTexture,
+				color: 0xf5deb3,
+				roughness: 0.8,
+				metalness: 0.2,
+				side: THREE.DoubleSide
+			});
+			const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+			wall.position.y += 5;
+			wall.position.z -= 2;
+			scene.add(wall);
+			
+			// Create the basketball
+			const ballRadius = 0.8;
+			const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
+			const basketballTexture = new THREE.TextureLoader().load('basketball_texture.jpg');
+			basketballTexture.wrapS = THREE.RepeatWrapping;
+			basketballTexture.wrapT = THREE.RepeatWrapping;
+			const ballMaterial = new THREE.MeshStandardMaterial({ 
+				map: basketballTexture,
+				roughness: 0.7,
+				metalness: 0.1
+			});
+			const sphere = new THREE.Mesh(ballGeometry, ballMaterial);
+			scene.add(sphere);
+		   
+			// Physics
+			let time = 0;
+			let now = 0;
+			let by = 5; // Initial height
+			let bx = -5; // Initial x position
+			let dx = 3; // X velocity
+			let dy = 0; // Initial Y velocity
+			let g = -9.8; // Gravity
+			let damp = 0.5; // Damping factor for bounce
+			
+			let animationStarted = false;
+			let animationFrameId = null;
+			
+			let rotationSpeed = 0;
+			const baseRotationSpeed = 5;
+			let lastBounce = false; // Track if the ball bounced in the previous frame
+			
+			const bounceSound = document.getElementById('bounceSound');
+			  
+			function playBounceSound(intensity) {
+				// Clone the audio element to allow overlapping sounds
+				const sound = bounceSound.cloneNode();
+				// Set volume based on impact intensity
+				sound.volume = Math.min(1.0, Math.max(0.1, intensity));
+				// Play the sound
+				sound.play().catch(e => console.log("Audio play failed:", e));
+			}
+			
+			// Animation loop
+			function animate() {
+				animationFrameId = requestAnimationFrame(animate);
+				
+				// Set deltaTime for consistent animation speed
+				const deltaTime = 1/60;
+				time = now;
+				now += deltaTime;
+				
+				// Update position based on velocity
+				bx += dx * deltaTime;
+				by += dy * deltaTime;
+				
+				// gravity
+				dy += g * deltaTime;		  
+				
+				let bounced = false;
+
+				if (by < ballRadius) {
+					by = ballRadius;
+					bounced = true;
+					
+					if (Math.abs(dy) < -g/6) {
+						// Very small bounce - stop the ball
+						dy = 0;
+						g = 0;
+						rotationSpeed = 1.4;
+					} else {
+						// Bounce with damping
+						const impactForce = Math.abs(dy); // Store impact force before damping
+						dy = -dy * damp;
+						// Set rotation speed based on horizontal velocity
+						rotationSpeed = baseRotationSpeed * Math.sign(dx) * Math.min(1, Math.abs(dy) / 10);
+						
+						// Play bounce sound with volume based on impact force
+						if (impactForce > 1) {
+							playBounceSound(impactForce / 15); // Normalize volume
+						}
+					}
+				}
+				
+				// If the ball just bounced (and wasn't bouncing before), adjust rotation
+				if (bounced && !lastBounce && Math.abs(dy) > 0.1) {
+					// Increase rotation on bounce
+					rotationSpeed = baseRotationSpeed * Math.sign(dx) * Math.min(1.5, Math.abs(dy) / 8);
+				}
+				
+				// Update bounce state for next frame
+				lastBounce = bounced;
+				
+				// Update ball position
+				sphere.position.set(bx, by, 0);
+				
+				// Apply rotation around Z-axis (for a ball moving in the XY plane)
+				if (Math.abs(rotationSpeed) > 0.01) {
+					sphere.rotation.z -= rotationSpeed * deltaTime;
+				}
+				
+				// Reset ball if it goes too far
+				if (bx > 10) {
+					bx = -5;
+					by = 5;
+					dy = 0;
+					g = -9.8;
+					rotationSpeed = 0; // Reset rotation speed
+				}
+				
+				// Gradually reduce rotation when in air (air resistance)
+				rotationSpeed *= 0.995;
+				
+				controls.update();
+				renderer.render(scene, camera);
+			}
+			function startAnimation() {
+				if (!animationStarted) {
+					animationStarted = true;
+					animate();
+				}
+			}
+			function stopAnimation() {
+				if (animationFrameId) {
+					cancelAnimationFrame(animationFrameId);
+					animationFrameId = null;
+				}
+				animationStarted = false;
+			}
+			
+			document.getElementById('startBtn').addEventListener('click', () => {
+			startAnimation(); });
+			document.getElementById('resetBtn').addEventListener('click', () => {
+			stopAnimation();	
+				// Reset physics and ball state
+				bx = -5;
+				by = 5;
+				dx = 3;
+				dy = 0;
+				g = -9.8;
+				rotationSpeed = 0;
+				lastBounce = false;
+					
+				sphere.position.set(bx, by, 0);
+				sphere.rotation.set(0, 0, 0);
+				renderer.render(scene, camera);
+			});
+		</script>
+	</body>
 </html>
